@@ -3,8 +3,9 @@ JavaScript library to control the Stream Deck USB device. Only tested on Chrome 
 
 ```
 import StreamDeckXL from "./stream-deck-xl.js";
+import StreamDeck from "./stream-deck.js";
 
-const streamDeck = new StreamDeck();
+const streamDeck = new StreamDeckXL();
 
 window.addEventListener("unload", function()
 {
