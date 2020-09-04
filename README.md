@@ -19,7 +19,7 @@ window.addEventListener("load", function()
         if (keys[0].down) streamDeck.drawImage(0, "./images/normal/Webcam-On.png", "white");
         if (keys[1].down) streamDeck.drawImage(0, "./images/normal/Multimedia-Mute.png", "white");
         if (keys[2].down) streamDeck.drawImage(0, "./images/normal/Audio-Mixer-On.png", "white");        
-    }
+    });
     
     streamDeck.connect(function(error)
     {
