@@ -2,9 +2,13 @@ export default class StreamDeck
 {
     constructor()
     {
-        this.device = null;
-        this.handler = null;
+        this.actionChannel = new BroadcastChannel('stream-deck-action');
+        this.eventChannel = new BroadcastChannel('stream-deck-event');
 
+        this.device = null;
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = 72;
+        this.canvas.height = 72;
         this.keys = [];
 
         for (let i=0; i<15; i++)
@@ -13,11 +17,6 @@ export default class StreamDeck
             this.keys[i].col = (i % 5) + 1;
             this.keys[i].row = Math.floor(i/5) + 1;
         }
-    }
-
-    setHandler(handler)
-    {
-        this.handler = handler;
     }
 
     async connect(callback)
@@ -29,7 +28,7 @@ export default class StreamDeck
             this.device = devices.find(d => d.vendorId === 0x0FD9 && d.productId === 0x0060);
             if (!this.device) this.device = await navigator.hid.requestDevice({filters: [{vendorId: 0x0FD9, productId: 0x0060}]});
             if (!this.device.opened) await this.device.open();
-            this.device.addEventListener('inputreport', this._handler.bind(this));
+            this.device.addEventListener('inputreport', this._handleDevice.bind(this));
             if (callback) callback();
             console.log("stream deck opened", this.device);
         } catch (e) {
@@ -61,12 +60,12 @@ export default class StreamDeck
 
     setKeyColor(id, fill)
     {
-        const offscreen = new OffscreenCanvas(72, 72);
-        const context = offscreen.getContext('2d');
+        const context = this.canvas.getContext('2d');
         context.fillStyle = fill;
-        context.fillRect(0, 0, 72, 72);
-        const pic = context.getImageData(0, 0, 72, 72).data;
-        this._transferImage(id, pic);
+        context.roundRect(0, 0, 72, 72, 20).fill();
+        const img = context.getImageData(0, 0, 72, 72);
+        const pic = img.data;
+        this._transferImage(id, pic, img);
     }
 
     drawImage(id, url, background)
@@ -74,18 +73,18 @@ export default class StreamDeck
         if (!background) background = "#ffffff";
 
         console.debug("drawImage", id, url);
-        const offscreen = new OffscreenCanvas(72, 72);
-        const context = offscreen.getContext('2d');
+        const context = this.canvas.getContext('2d');
         const img = new Image;
         const that = this;
 
         img.onload = function()
         {
             context.fillStyle = background;
-            context.fillRect(0, 0, 72, 72);
+            context.roundRect(0, 0, 72, 72, 20).fill();
             context.drawImage(img, 0, 0, img.width, img.height, 0, 0, 72, 72);
-            const pic = context.getImageData(0, 0, 72, 72).data;
-            that._transferImage(id, pic);
+            const imgData = context.getImageData(0, 0, 72, 72);
+            const pic = imgData.data;
+            that._transferImage(id, pic, imgData);
         };
         img.src = url;
     }
@@ -102,16 +101,16 @@ export default class StreamDeck
         function processFrame(img)
         {
             context.drawImage(img, 0, 0, img.width, img.height, 0, 0, 72, 72);
-            const pic = context.getImageData(0, 0, 72, 72).data;
-            that._transferImage(id, pic);
+            const imgData = context.getImageData(0, 0, 72, 72);
+            const pic = imgData.data;
+            that._transferImage(id, pic, imgData);
         }
 
         const that = this;
         const imageCapture = new ImageCapture(track);
-        const offscreen = new OffscreenCanvas(72, 72);
-        const context = offscreen.getContext('2d');
+        const context = this.canvas.getContext('2d');
         context.fillStyle = fill;
-        context.fillRect(0, 0, 72, 72);
+        context.roundRect(0, 0, 72, 72, 20).fill();
 
         return setInterval(function () {
             imageCapture.grabFrame().then(processFrame).catch(errFrame);
@@ -124,10 +123,9 @@ export default class StreamDeck
         if (!color) color = "#ffffff";
 
         console.debug("writeText", id, text, color, background);
-        const offscreen = new OffscreenCanvas(72, 72);
-        const context = offscreen.getContext('2d');
+        const context = this.canvas.getContext('2d');
         context.fillStyle = background;
-        context.fillRect(0, 0, 72, 72);
+        context.roundRect(0, 0, 72, 72, 20).fill();
         context.fillStyle = color;
 
         if (text.indexOf(" ") > -1)
@@ -142,8 +140,9 @@ export default class StreamDeck
            context.fillText(text, 3, 48);
         }
 
-        const pic = context.getImageData(0, 0, 72, 72).data;
-        this._transferImage(id, pic);
+        const img = context.getImageData(0, 0, 72, 72);
+        const pic = img.data;
+        this._transferImage(id, pic, img);
     }
 
 
@@ -152,21 +151,82 @@ export default class StreamDeck
         if (this.device?.opened)
         {
             await this.device.close();
-            this.device.removeEventListener('inputreport', this._handler);
+            this.device.removeEventListener('inputreport', this._handleDevice);
         }
+
+        if (this.eventChannel) this.eventChannel.close();
+        if (this.actionChannel) this.actionChannel.close();
     }
 
-    _handler(event)
+    showUI(callback, ele)
+    {
+        if (!ele) ele = document.body;
+
+        const that = this;
+        this.ui = {};
+        this.ui.canvas = document.createElement('canvas');
+        ele.appendChild(this.ui.canvas);
+        this.ui.canvas.id = 'stream-deck';
+        this.ui.canvas.width = 638;
+        this.ui.canvas.height = 503;
+        this.ui.canvas.style.cursor = "pointer";
+
+        this.ui.canvas.addEventListener("click", function(e)
+        {
+            const r = this.getBoundingClientRect();
+            const x = e.clientX - r.left;
+            const y = e.clientY - r.top;
+            const col = 5 - Math.floor((x + 40) / 106);
+            const row = Math.floor((y - 100) / 103);
+            const key = (row * 5) + col;
+            const keys = {};
+
+            keys[key] = {down: true, col: col, row: row};
+            that.eventChannel.postMessage(keys);
+        });
+
+        this.ui.context = this.ui.canvas.getContext('2d');
+        const img = new Image;
+
+        img.onload = function()
+        {
+            that.ui.context.drawImage(img, 0, 0, img.width, img.height, 0, 0, that.ui.canvas.width, that.ui.canvas.height);
+            if (callback) callback();
+        };
+
+        img.src = "./stream-deck.png";
+
+        this.ui.canvas2 = document.createElement('canvas');
+        this.ui.canvas2.width = 72;
+        this.ui.canvas2.height = 72;
+    }
+
+    handleScreen(event)
+    {
+        const that = this;
+
+        createImageBitmap(event.data.img).then(function(imgBitmap)
+        {
+            const col = 5 - (event.data.id % 5);
+            const row = Math.floor(event.data.id / 5);
+            const x = -40 + (col * 106);
+            const y = 100 + (row * 103);
+            that.ui.context.drawImage(imgBitmap, 0, 0, 72, 72, x, y, 80, 80);
+        });
+    }
+
+    _handleDevice(event)
     {
         for (let i=0; i<15; i++)
         {
             const key = i;
             this.keys[key].down = !!event.data.getUint8(i);
         }
-        if (this.handler) this.handler(event, this.keys);
+
+        if (this.eventChannel) this.eventChannel.postMessage(this.keys);
     }
 
-    _transferImage(id, pic)
+    _transferImage(id, pic, imgData)
     {
         console.debug("_transferImage", id, pic);
         const height = 72;
@@ -185,12 +245,19 @@ export default class StreamDeck
                 img[i + 2] = pic[j];
             }
         }
-        this._setKeyBitmap(id, img);
+        this._setKeyBitmap(id, img, imgData);
     }
 
-    async _setKeyBitmap(id, imgData)
+    async _setKeyBitmap(id, img, imgData)
     {
         console.debug("_setKeyBitmap", id, imgData);
+
+        if (this.actionChannel)
+        {
+            const data = {id: id, img: imgData};
+            this.actionChannel.postMessage(data);
+        }
+
         const pagePacketSize = 8191;
         const numFirstPageBytes = 7749;
 
@@ -213,8 +280,8 @@ export default class StreamDeck
 
         if (this.device?.opened)
         {
-            const firstPart = imgData.slice(0, numFirstPageBytes);
-            const secondPart = imgData.slice(numFirstPageBytes);
+            const firstPart = img.slice(0, numFirstPageBytes);
+            const secondPart = img.slice(numFirstPageBytes);
             const firstPage = [...headerTemplatePage1, ...firstPart];
             const secondPage = [...headerTemplatePage2, ...secondPart];
             firstPage[4] = id + 1;
@@ -225,4 +292,17 @@ export default class StreamDeck
             await this.device.sendReport(0x02, page2);
         }
     }
+}
+CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r)
+{
+    if (w < 2 * r) r = w / 2;
+    if (h < 2 * r) r = h / 2;
+    this.beginPath();
+    this.moveTo(x+r, y);
+    this.arcTo(x+w, y,   x+w, y+h, r);
+    this.arcTo(x+w, y+h, x,   y+h, r);
+    this.arcTo(x,   y+h, x,   y,   r);
+    this.arcTo(x,   y,   x+w, y,   r);
+    this.closePath();
+    return this;
 }
