@@ -153,9 +153,6 @@ export default class StreamDeck
             await this.device.close();
             this.device.removeEventListener('inputreport', this._handleDevice);
         }
-
-        if (this.eventChannel) this.eventChannel.close();
-        if (this.actionChannel) this.actionChannel.close();
     }
 
     showUI(callback, ele)
@@ -205,14 +202,17 @@ export default class StreamDeck
     {
         const that = this;
 
-        createImageBitmap(event.data.img).then(function(imgBitmap)
+        if (that.ui)
         {
-            const col = 5 - (event.data.id % 5);
-            const row = Math.floor(event.data.id / 5);
-            const x = -40 + (col * 106);
-            const y = 100 + (row * 103);
-            that.ui.context.drawImage(imgBitmap, 0, 0, 72, 72, x, y, 80, 80);
-        });
+            createImageBitmap(event.data.img).then(function(imgBitmap)
+            {
+                const col = 5 - (event.data.id % 5);
+                const row = Math.floor(event.data.id / 5);
+                const x = -40 + (col * 106);
+                const y = 100 + (row * 103);
+                that.ui.context.drawImage(imgBitmap, 0, 0, 72, 72, x, y, 80, 80);
+            });
+        }
     }
 
     _handleDevice(event)

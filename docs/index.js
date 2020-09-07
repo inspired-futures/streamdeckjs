@@ -1,57 +1,86 @@
-import StreamDeckXL from "./stream-deck-xl.js";
-import StreamDeck from "./stream-deck.js";
-
-const streamDeck = new StreamDeckXL();
+import streamDeckXL from "./stream-deck-xl.js";
+import streamDeck from "./stream-deck.js";
 
 window.addEventListener("unload", function()
 {
-    if (streamDeck.device) streamDeck.disconnect()
+    if (window.streamDeck.device) window.streamDeck.disconnect()
 });
 
 window.addEventListener("load", function()
 {
+    window.streamDeck = new streamDeck();
+
     const connect = document.getElementById("connect");
+    const show = document.getElementById("show");
 
     connect.addEventListener('click', event =>
     {
-        streamDeck.showUI(function()
+        if (connect.dataset.status == "off")
         {
-            streamDeck.connect(function(error)
+            window.streamDeck.connect(function(error)
             {
                 if (!error)
                 {
-                    streamDeck.reset();
-                    streamDeck.setBrightness(80);
-                    streamDeck.drawImage(0, "./images/normal/Webcam-On.png", "black");
-                    streamDeck.drawImage(1, "./images/normal/Multimedia-Mute.png", "black");
-                    streamDeck.drawImage(2, "./images/normal/Audio-Mixer-On.png", "black");
-                    streamDeck.setKeyColor(3, "#0000ff");
-                    streamDeck.writeText(4, "Hello", "white", "red");
-                    streamDeck.drawImage(5, "./images/normal/Source-On.png", "black");
-                    streamDeck.drawImage(6, "./images/normal/Record-On.png", "black");
-                    streamDeck.drawImage(7, "./images/normal/Scene-1-On.png", "black");
-                    streamDeck.drawImage(14, "./images/normal/Screenshot.png", "black");
+                    connect.innerHTML = "Disconnect Device";
+                    connect.dataset.status = "on";
+                    showButtons();
+                    console.log("stream connected");
                 }
+                else alert("Stream Deck device not found");
             });
-        });
+
+        }
+        else {
+            window.actionChannel.close();
+            window.eventChannel.close();
+            window.streamDeck.reset();
+            window.streamDeck.disconnect();
+
+            connect.innerHTML = "Connect Device";
+            connect.dataset.status = "off";
+        }
     });
 
-    const eventChannel = new BroadcastChannel('stream-deck-event');
-    const actionChannel = new BroadcastChannel('stream-deck-action');
+    show.addEventListener('click', event =>
+    {
+        window.streamDeck.showUI(function()
+        {
+            showButtons();
+            console.log("stream deck ui rendered");
+        });
+    });
+});
 
-    eventChannel.addEventListener('message', event =>
+function showButtons()
+{
+    window.eventChannel = new BroadcastChannel('stream-deck-event');
+    window.actionChannel = new BroadcastChannel('stream-deck-action');
+
+    window.eventChannel.addEventListener('message', event =>
     {
         const keys = event.data;
         console.log("key press", keys);
 
-        if (keys[0]?.down) streamDeck.drawImage(0, "./images/normal/Webcam-Off.png", "white");
-        if (keys[1]?.down) streamDeck.drawImage(1, "./images/normal/Multimedia-Mute.png", "white");
-        if (keys[2]?.down) streamDeck.drawImage(2, "./images/normal/Audio-Mixer-On.png", "white");
+        if (keys[0]?.down) window.streamDeck.drawImage(0, "./images/normal/Webcam-Off.png", "white");
+        if (keys[1]?.down) window.streamDeck.drawImage(1, "./images/normal/Multimedia-Mute.png", "white");
+        if (keys[2]?.down) window.streamDeck.drawImage(2, "./images/normal/Audio-Mixer-On.png", "white");
     });
 
-    actionChannel.addEventListener('message', event =>
+    window.actionChannel.addEventListener('message', event =>
     {
         console.log("screen refresh", event.data);
-        streamDeck.handleScreen(event);
+        window.streamDeck.handleScreen(event);
     });
-});
+
+    window.streamDeck.reset();
+    window.streamDeck.setBrightness(80);
+    window.streamDeck.drawImage(0, "./images/normal/Webcam-On.png", "black");
+    window.streamDeck.drawImage(1, "./images/normal/Multimedia-Mute.png", "black");
+    window.streamDeck.drawImage(2, "./images/normal/Audio-Mixer-On.png", "black");
+    window.streamDeck.setKeyColor(3, "#0000ff");
+    window.streamDeck.writeText(4, "Hello", "white", "red");
+    window.streamDeck.drawImage(5, "./images/normal/Source-On.png", "black");
+    window.streamDeck.drawImage(6, "./images/normal/Record-On.png", "black");
+    window.streamDeck.drawImage(7, "./images/normal/Scene-1-On.png", "black");
+    window.streamDeck.drawImage(14, "./images/normal/Screenshot.png", "black");
+}

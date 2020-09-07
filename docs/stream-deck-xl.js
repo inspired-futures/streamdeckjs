@@ -103,9 +103,6 @@ export default class StreamDeckXL
             await this.device.close();
             this.device.removeEventListener('inputreport', this._handleDevice);
         }
-
-        if (this.eventChannel) this.eventChannel.close();
-        if (this.actionChannel) this.actionChannel.close();
     }
 
     showUI(callback, ele)
@@ -159,15 +156,18 @@ export default class StreamDeckXL
     {
         const that = this;
 
-        createImageBitmap(event.data.img).then(function(imgBitmap)
+        if (that.ui)
         {
-            that.ui.context2.drawImage(imgBitmap, 0, 0, 96, 96, 0, 0, 96, 96);
-            const col = event.data.id % 8;
-            const row = Math.floor(event.data.id / 8);
-            const x = 72 + (col * 96 * 1.08);
-            const y = 102 + (row * 96 * 1.06);
-            that.ui.context.drawImage(that.ui.canvas2, 0, 0, 96, 96, x, y, 72, 72);
-        });
+            createImageBitmap(event.data.img).then(function(imgBitmap)
+            {
+                that.ui.context2.drawImage(imgBitmap, 0, 0, 96, 96, 0, 0, 96, 96);
+                const col = event.data.id % 8;
+                const row = Math.floor(event.data.id / 8);
+                const x = 72 + (col * 96 * 1.08);
+                const y = 102 + (row * 96 * 1.06);
+                that.ui.context.drawImage(that.ui.canvas2, 0, 0, 96, 96, x, y, 72, 72);
+            });
+        }
     }
 
     drawImage(id, url, background)
