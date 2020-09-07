@@ -7,6 +7,7 @@ export default class StreamDeckXL
         this.device = null;
         this.canvas = [];
         this.keys = [];
+        this.images = [];
 
         for (let i=0; i<32; i++)
         {
@@ -36,6 +37,18 @@ export default class StreamDeckXL
             if (!this.device.opened) await this.device.open();
             this.device.addEventListener('inputreport', this._handleDevice.bind(this));
             if (callback) callback();
+            const that = this;
+
+            this.actionChannel.addEventListener('message', event =>
+            {
+                if (that.actionChannel && event.data.action == 'refresh')
+                {
+                    for (let i=0; i<15; i++)
+                    {
+                        if (that.images[i]) that.eventChannel.postMessage(that.images[i]);
+                    }
+                }
+            });
             console.log("stream deck opened", this.device);
         } catch (e) {
             this.error = e;
@@ -129,7 +142,7 @@ export default class StreamDeckXL
             const keys = {};
 
             keys[key] = {down: true, col: col, row: row};
-            that.eventChannel.postMessage(keys);
+            that.eventChannel.postMessage({event: 'keys', keys: keys});
         });
 
         this.ui.context = this.ui.canvas.getContext('2d');
@@ -220,8 +233,7 @@ export default class StreamDeckXL
             const key = i - 3;
             this.keys[key].down = !!event.data.getUint8(i);
         }
-
-        if (this.eventChannel) this.eventChannel.postMessage(this.keys);
+        if (this.eventChannel) this.eventChannel.postMessage({event: 'keys', keys: this.keys});
     }
 
     _transferImage(id)
@@ -256,10 +268,11 @@ export default class StreamDeckXL
             return headerTemplatePage;
         }
 
-        if (this.actionChannel)
+        if (this.eventChannel)
         {
-            const data = {id: id, img: this.canvas[id].getContext('2d').getImageData(0, 0, 96, 96)};
-            this.actionChannel.postMessage(data);
+            const data = {event: 'images', id: id, img: this.canvas[id].getContext('2d').getImageData(0, 0, 96, 96)};
+            this.eventChannel.postMessage(data);
+            this.images[id] = data;
         }
 
         if (this.device?.opened)

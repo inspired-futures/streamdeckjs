@@ -10,6 +10,7 @@ export default class StreamDeck
         this.canvas.width = 72;
         this.canvas.height = 72;
         this.keys = [];
+        this.images = [];
 
         for (let i=0; i<15; i++)
         {
@@ -30,6 +31,19 @@ export default class StreamDeck
             if (!this.device.opened) await this.device.open();
             this.device.addEventListener('inputreport', this._handleDevice.bind(this));
             if (callback) callback();
+            const that = this;
+
+            this.actionChannel.addEventListener('message', event =>
+            {
+                if (that.actionChannel && event.data.action == 'refresh')
+                {
+                    for (let i=0; i<15; i++)
+                    {
+                        if (that.images[i]) that.eventChannel.postMessage(that.images[i]);
+                    }
+                }
+            });
+
             console.log("stream deck opened", this.device);
         } catch (e) {
             this.error = e;
@@ -180,7 +194,7 @@ export default class StreamDeck
             const keys = {};
 
             keys[key] = {down: true, col: col, row: row};
-            that.eventChannel.postMessage(keys);
+            that.eventChannel.postMessage({event: 'keys', keys: keys});
         });
 
         this.ui.context = this.ui.canvas.getContext('2d');
@@ -193,10 +207,6 @@ export default class StreamDeck
         };
 
         img.src = "./stream-deck.png";
-
-        this.ui.canvas2 = document.createElement('canvas');
-        this.ui.canvas2.width = 72;
-        this.ui.canvas2.height = 72;
     }
 
     handleScreen(event)
@@ -212,6 +222,9 @@ export default class StreamDeck
                 const x = -40 + (col * 106);
                 const y = 100 + (row * 103);
                 that.ui.context.drawImage(imgBitmap, 0, 0, 72, 72, x, y, 80, 80);
+
+                console.debug("handleScreen", imgBitmap);
+
             });
         }
     }
@@ -224,7 +237,7 @@ export default class StreamDeck
             this.keys[key].down = !!event.data.getUint8(i);
         }
 
-        if (this.eventChannel) this.eventChannel.postMessage(this.keys);
+        if (this.eventChannel) this.eventChannel.postMessage({event: 'keys', keys: this.keys});
     }
 
     _transferImage(id, pic, imgData)
@@ -253,10 +266,11 @@ export default class StreamDeck
     {
         console.debug("_setKeyBitmap", id, imgData);
 
-        if (this.actionChannel)
+        if (this.eventChannel)
         {
-            const data = {id: id, img: imgData};
-            this.actionChannel.postMessage(data);
+            const data = {event: 'images', id: id, img: imgData};
+            this.eventChannel.postMessage(data);
+            this.images[id] = data;
         }
 
         const pagePacketSize = 8191;
@@ -294,6 +308,7 @@ export default class StreamDeck
         }
     }
 }
+
 CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r)
 {
     if (w < 2 * r) r = w / 2;

@@ -69,23 +69,28 @@ function getStreamDeck()
 function showButtons()
 {
     window.eventChannel = new BroadcastChannel('stream-deck-event');
-    window.actionChannel = new BroadcastChannel('stream-deck-action');
-
     window.eventChannel.addEventListener('message', event =>
     {
-        const keys = event.data;
-        console.log("key press", keys);
+        if (event.data.event == "images")
+        {
+            console.log("screen refresh", event.data);
+            window.streamDeck.handleScreen(event);
+        }
+        else
 
-        if (keys[0]?.down) window.streamDeck.drawImage(0, "./images/normal/Webcam-Off.png", "white");
-        if (keys[1]?.down) window.streamDeck.drawImage(1, "./images/normal/Multimedia-Mute.png", "white");
-        if (keys[2]?.down) window.streamDeck.drawImage(2, "./images/normal/Audio-Mixer-On.png", "white");
+        if (event.data.event == "keys")
+        {
+            const keys = event.data.keys;
+            console.log("key press", keys);
+
+            if (keys[0]?.down) window.streamDeck.drawImage(0, "./images/normal/Webcam-Off.png", "white");
+            if (keys[1]?.down) window.streamDeck.drawImage(1, "./images/normal/Multimedia-Mute.png", "white");
+            if (keys[2]?.down) window.streamDeck.drawImage(2, "./images/normal/Audio-Mixer-On.png", "white");
+        }
     });
 
-    window.actionChannel.addEventListener('message', event =>
-    {
-        console.log("screen refresh", event.data);
-        window.streamDeck.handleScreen(event);
-    });
+    window.actionChannel = new BroadcastChannel('stream-deck-action');
+    window.actionChannel.postMessage({action: 'refresh'});
 
     window.streamDeck.reset();
     window.streamDeck.setBrightness(80);
