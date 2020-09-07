@@ -27,7 +27,7 @@ window.addEventListener("load", function()
                 {
                     connect.innerHTML = "Disconnect Device";
                     connect.dataset.status = "on";
-                    showButtons();
+                    setupDeviceHandler();
                     console.log("stream connected");
                 }
                 else alert("Stream Deck device not found");
@@ -51,7 +51,7 @@ window.addEventListener("load", function()
 
         window.streamDeck.showUI(function()
         {
-            showButtons();
+            setupUIHandler();
             console.log("stream deck ui rendered");
 
         }, streamdeck);
@@ -66,7 +66,7 @@ function getStreamDeck()
     window.streamDeck = (device.value == "stream-deck") ? stream_deck : stream_deck_xl;
 }
 
-function showButtons()
+function setupUIHandler()
 {
     window.eventChannel = new BroadcastChannel('stream-deck-event');
     window.eventChannel.addEventListener('message', event =>
@@ -76,8 +76,17 @@ function showButtons()
             console.log("screen refresh", event.data);
             window.streamDeck.handleScreen(event);
         }
-        else
+    });
 
+    window.actionChannel = new BroadcastChannel('stream-deck-action');
+    window.actionChannel.postMessage({action: 'refresh'});
+}
+
+function setupDeviceHandler()
+{
+    window.eventChannel = new BroadcastChannel('stream-deck-event');
+    window.eventChannel.addEventListener('message', event =>
+    {
         if (event.data.event == "keys")
         {
             const keys = event.data.keys;
@@ -88,9 +97,6 @@ function showButtons()
             if (keys[2]?.down) window.streamDeck.drawImage(2, "./images/normal/Audio-Mixer-On.png", "white");
         }
     });
-
-    window.actionChannel = new BroadcastChannel('stream-deck-action');
-    window.actionChannel.postMessage({action: 'refresh'});
 
     window.streamDeck.reset();
     window.streamDeck.setBrightness(80);

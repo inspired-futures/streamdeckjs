@@ -41,9 +41,9 @@ export default class StreamDeckXL
 
             this.actionChannel.addEventListener('message', event =>
             {
-                if (that.actionChannel && event.data.action == 'refresh')
+                if (event.data.action == 'refresh')
                 {
-                    for (let i=0; i<15; i++)
+                    for (let i=0; i<32; i++)
                     {
                         if (that.images[i]) that.eventChannel.postMessage(that.images[i]);
                     }
