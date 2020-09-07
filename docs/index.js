@@ -14,6 +14,7 @@ window.addEventListener("load", function()
 {
     const connect = document.getElementById("connect");
     const show = document.getElementById("show");
+    const load = document.getElementById("load");
     const streamdeck_div = document.getElementById("streamdeck");
 
     connect.addEventListener('click', event =>
@@ -28,15 +29,6 @@ window.addEventListener("load", function()
                 {
                     window.streamDeck.reset();
                     window.streamDeck.setBrightness(80);
-                    window.streamDeck.drawImage(0, "./images/normal/Webcam-On.png", "black");
-                    window.streamDeck.drawImage(1, "./images/normal/Multimedia-Mute.png", "black");
-                    window.streamDeck.drawImage(2, "./images/normal/Audio-Mixer-On.png", "black");
-                    window.streamDeck.setKeyColor(3, "#0000ff");
-                    window.streamDeck.writeText(4, "Hello", "white", "red");
-                    window.streamDeck.drawImage(5, "./images/normal/Source-On.png", "black");
-                    window.streamDeck.drawImage(6, "./images/normal/Record-On.png", "black");
-                    window.streamDeck.drawImage(7, "./images/normal/Scene-1-On.png", "black");
-                    window.streamDeck.drawImage(14, "./images/normal/Screenshot.png", "black");
 
                     connect.innerHTML = "Disconnect Device";
                     connect.dataset.status = "on";
@@ -64,6 +56,19 @@ window.addEventListener("load", function()
             window.actionChannel.postMessage({action: 'refresh'});
 
         }, streamdeck_div);
+    });
+
+    load.addEventListener('click', event =>
+    {
+        window.streamDeck.drawImage(0, "./images/normal/Webcam-On.png", "black");
+        window.streamDeck.drawImage(1, "./images/normal/Multimedia-Mute.png", "black");
+        window.streamDeck.drawImage(2, "./images/normal/Audio-Mixer-On.png", "black");
+        window.streamDeck.setKeyColor(3, "#0000ff");
+        window.streamDeck.writeText(4, "Hello", "white", "red");
+        window.streamDeck.drawImage(5, "./images/normal/Source-On.png", "black");
+        window.streamDeck.drawImage(6, "./images/normal/Record-On.png", "black");
+        window.streamDeck.drawImage(7, "./images/normal/Scene-1-On.png", "black");
+        window.streamDeck.drawImage(14, "./images/normal/Screenshot.png", "black");
     });
 
     setupEventHandler();

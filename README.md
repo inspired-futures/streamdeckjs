@@ -41,12 +41,12 @@ window.addEventListener("load", function()
 
     eventChannel.addEventListener('message', event =>
     {
-        const keys = event.data;
-        console.log("key press", keys);
-
-        if (keys[0]?.down) streamDeck.drawImage(0, "./images/normal/Webcam-Off.png", "white");
-        if (keys[1]?.down) streamDeck.drawImage(1, "./images/normal/Multimedia-Mute.png", "white");
-        if (keys[2]?.down) streamDeck.drawImage(2, "./images/normal/Audio-Mixer-On.png", "white");
+        if (event.data.event == "keys")
+        {     
+            if (event.data.keys[0]?.down) streamDeck.drawImage(0, "./images/normal/Webcam-Off.png", "white");
+            if (event.data.keys[1]?.down) streamDeck.drawImage(1, "./images/normal/Multimedia-Mute.png", "white");
+            if (event.data.keys[2]?.down) streamDeck.drawImage(2, "./images/normal/Audio-Mixer-On.png", "white");
+        }
     });
 });
 ```
