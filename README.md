@@ -3,6 +3,8 @@ JavaScript library to control the Stream Deck USB device. Only tested on Chrome 
 
 <img src="https://inspired-futures.github.io/streamdeckjs/streamdeck.png" width="75%" />
 
+Demo at https://inspired-futures.github.io/streamdeckjs/
+
 ```
 import StreamDeckXL from "./stream-deck-xl.js";
 import StreamDeck from "./stream-deck.js";
