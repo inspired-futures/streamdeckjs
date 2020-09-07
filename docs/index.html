@@ -1,9 +1,14 @@
 <html>
 <head>
-<script type="module" src="./index.js"></script>
+    <script type="module" src="./index.js"></script>
 </head>
 <body>
-<button data-status="off" id="connect">Connect Device</button>
-<button id="show">Show UI</button>
+    <select id="device">
+        <option value="stream-deck">Stream Deck</option>
+        <option value="stream-deck-xl">Stream Deck XL</option>
+    </select>
+    <button id="connect" data-status="off">Connect Device</button>
+    <button id="show">Show UI</button>
+    <div id="streamdeck"></div>
 </body>
 </html>

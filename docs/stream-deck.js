@@ -159,6 +159,7 @@ export default class StreamDeck
     {
         if (!ele) ele = document.body;
 
+        ele.innerHTML = "";
         const that = this;
         this.ui = {};
         this.ui.canvas = document.createElement('canvas');

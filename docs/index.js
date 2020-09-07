@@ -1,20 +1,24 @@
 import streamDeckXL from "./stream-deck-xl.js";
 import streamDeck from "./stream-deck.js";
 
+const stream_deck = new streamDeck();
+const stream_deck_xl = new streamDeckXL();
+
 window.addEventListener("unload", function()
 {
-    if (window.streamDeck.device) window.streamDeck.disconnect()
+    if (window.streamDeck?.device) window.streamDeck.disconnect()
 });
 
 window.addEventListener("load", function()
 {
-    window.streamDeck = new streamDeck();
-
     const connect = document.getElementById("connect");
     const show = document.getElementById("show");
+    const streamdeck = document.getElementById("streamdeck");
 
     connect.addEventListener('click', event =>
     {
+        getStreamDeck();
+
         if (connect.dataset.status == "off")
         {
             window.streamDeck.connect(function(error)
@@ -43,13 +47,24 @@ window.addEventListener("load", function()
 
     show.addEventListener('click', event =>
     {
+        getStreamDeck();
+
         window.streamDeck.showUI(function()
         {
             showButtons();
             console.log("stream deck ui rendered");
-        });
+
+        }, streamdeck);
     });
 });
+
+function getStreamDeck()
+{
+    const device = document.getElementById("device");
+    console.log("device", device.value);
+
+    window.streamDeck = (device.value == "stream-deck") ? stream_deck : stream_deck_xl;
+}
 
 function showButtons()
 {
