@@ -96,13 +96,13 @@ export default class StreamDeckXL
 
         if (text.indexOf(" ") > -1)
         {
-           context.font = "16px Arial";
+           context.font = "14px Arial";
            const texts = text.split(" ");
            context.fillText(texts[0], 8, 32);
            context.fillText(texts[1], 8, 48);
 
         } else {
-           context.font = "24px Arial";
+           context.font = "20px Arial";
            context.fillText(text, 8, 48);
         }
         this._transferImage(id);
@@ -200,30 +200,152 @@ export default class StreamDeckXL
         img.src = url;
     }
 
-    showMediaStream(id, track, fill)
+    showAudioStream(id, stream, label)
+    {
+        console.debug("showAudioStream", id, stream);
+
+        const ctx = this.canvas[id].getContext('2d');
+        this._roundRect(ctx, 2, 2, 92, 92, 20);
+
+        const audioCtx = new AudioContext();
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.minDecibels = -80;
+        analyser.maxDecibels = -10;
+        analyser.smoothingTimeConstant = 0.85;
+        audioCtx.createMediaStreamSource(stream).connect(analyser);
+        audioCtx.resume();
+        return this._visualize(id, this.canvas[id], analyser, label);
+    }
+
+    showMediaStream(id, track, label)
     {
         console.debug("showMediaStream", id, track);
 
-        function errFrame(err)
+        const errFrame = (err) =>
         {
             console.error('grabFrame() failed: ', err)
         }
 
-        function processFrame(img)
+        const processFrame = (img) =>
         {
-            context.drawImage(img, 0, 0, img.width, img.height, 0, 0, 96, 96);
-            that._transferImage(id);
+            ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, 96, 96);
+            ctx.fillText(label, 48, 18);
+            this._transferImage(id);
         }
 
-        const that = this;
-        const context = that.canvas[id].getContext('2d');
-        context.fillStyle = fill;
-        context.roundRect(2, 2, 92, 92, 20).fill();
+        const ctx = this.canvas[id].getContext('2d');
+        this._roundRect(ctx, 2, 2, 92, 92, 20);
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "white";
+
         const imageCapture = new ImageCapture(track);
 
         return setInterval(function () {
             imageCapture.grabFrame().then(processFrame).catch(errFrame);
         }, 500);
+    }
+
+    showAudioStream(id, stream, label)
+    {
+        console.debug("showAudioStream", id, stream);
+
+        const canvasCtx = this.canvas[id].getContext('2d');
+        this._roundRect(canvasCtx, 2, 2, 92, 92, 20);
+
+        const audioCtx = new AudioContext();
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.minDecibels = -80;
+        analyser.maxDecibels = -10;
+        analyser.smoothingTimeConstant = 0.85;
+        audioCtx.createMediaStreamSource(stream).connect(analyser);
+
+        var bufferLength = analyser.frequencyBinCount;
+        var dataArray = new Float32Array(bufferLength);
+        var MIN = 7;
+        var WIDTH = this.canvas[id].width * window.devicePixelRatio;
+        var HEIGHT = this.canvas[id].height * window.devicePixelRatio;
+
+        const uuidToColor = (id) =>
+        {
+            var g = 0, b = 0;
+
+            for (var i = 0; i < id.length/2; i++)
+            {
+              var code = id.charCodeAt(i);
+              g = g + code;
+              code = id.charCodeAt(i*2);
+              b = b + code;
+            }
+            return [g % 256, b % 256];
+        }
+
+        const draw = () =>
+        {
+            analyser.getFloatFrequencyData(dataArray);
+
+            var barWidth = (WIDTH / bufferLength) * 3;
+            var barHeight, point, x = 0;
+
+            for (var i = 0; i < bufferLength; i++)
+            {
+                point = dataArray[i];
+                barHeight = (point + 140) * 2.5;
+                barHeight = HEIGHT / MIN + barHeight / 256 * HEIGHT * (MIN - 1) / MIN;
+
+                if (barHeight < HEIGHT / MIN) {
+                  barHeight = HEIGHT / MIN;
+                }
+
+                canvasCtx.fillStyle = 'rgb(0, 0, 0)';
+                canvasCtx.fillRect(x, 0, barWidth, HEIGHT);
+
+                var r = Math.floor(barHeight + 64);
+
+                if (g % 3 === 0) {
+                  canvasCtx.fillStyle = `rgb(${r},${g},${b})`;
+                } else if (g % 3 === 1) {
+                  canvasCtx.fillStyle = `rgb(${g},${r},${b})`;
+                } else {
+                  canvasCtx.fillStyle = `rgb(${g},${b},${r})`;
+                }
+
+                canvasCtx.fillRect(x, HEIGHT-barHeight + 20, barWidth, barHeight);
+
+                canvasCtx.fillStyle = "white";
+                canvasCtx.fillText(label, 36, 16);
+                this._transferImage(id);
+
+                x += barWidth + 2;
+            }
+        }
+
+        var gb = uuidToColor(label);
+        var g = gb[0], b = gb[1];
+
+        canvasCtx.fillStyle = 'rgb(0, 0, 0)';
+        canvasCtx.fillRect(0, 0, WIDTH, HEIGHT);
+        canvasCtx.font = "14px Arial";
+
+        audioCtx.resume();
+        return setInterval(draw, 500);
+    }
+
+    _roundRect(ctx, x, y, width, height, radius)
+    {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+        ctx.clip();
     }
 
     _handleDevice(event)

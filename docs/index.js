@@ -7,13 +7,17 @@ const stream_deck_xl = new streamDeckXL();
 window.addEventListener("unload", function()
 {
     window.eventChannel.close();
-    if (window.streamDeck?.device) window.streamDeck.disconnect()
+    if (window.streamDeck?.device) window.streamDeck.disconnect();
+    if (window.webcam_animation) clearInterval(window.webcam_animation);
+    if (window.mic_animation) clearInterval(window.mic_animation);
 });
 
 window.addEventListener("load", function()
 {
     const connect = document.getElementById("connect");
-    const show = document.getElementById("show");
+    const showui = document.getElementById("showui");
+    const showcam = document.getElementById("showcam");
+    const showmic = document.getElementById("showmic");
     const load = document.getElementById("load");
     const streamdeck_div = document.getElementById("streamdeck");
 
@@ -46,7 +50,7 @@ window.addEventListener("load", function()
         }
     });
 
-    show.addEventListener('click', event =>
+    showui.addEventListener('click', event =>
     {
         getStreamDeck();
 
@@ -56,6 +60,58 @@ window.addEventListener("load", function()
             window.actionChannel.postMessage({action: 'refresh'});
 
         }, streamdeck_div);
+    });
+
+    showcam.addEventListener('click', event =>
+    {
+        let track = null;
+
+        const gotMedia = mediaStream =>
+        {
+            track = mediaStream.getVideoTracks()[0];
+            window.webcam_animation = window.streamDeck.showMediaStream(8, track, "John");
+        }
+
+        const errMedia = err =>
+        {
+            console.error('grabFrame() failed: ', err)
+        }
+
+        if (window.webcam_animation) {
+            clearInterval(window.webcam_animation);
+            window.webcam_animation = null;
+            showcam.innerHTML = "Show Webcam";
+            if (track) track.stop();
+        } else {
+            navigator.mediaDevices.getUserMedia({video: true, audio: false}).then(gotMedia).catch(errMedia);
+            showcam.innerHTML = "Stop Webcam";
+        }
+    });
+
+    showmic.addEventListener('click', event =>
+    {
+        let track = null;
+
+        const gotMedia = mediaStream =>
+        {
+            track = mediaStream.getAudioTracks()[0];
+            window.mic_animation = window.streamDeck.showAudioStream(9, mediaStream, "John");
+        }
+
+        const errMedia = err =>
+        {
+            console.error('grabFrame() failed: ', err)
+        }
+
+        if (window.mic_animation) {
+            clearInterval(window.mic_animation);
+            window.mic_animation = null;
+            showmic.innerHTML = "Show Mic";
+            if (track) track.stop();
+        } else {
+            navigator.mediaDevices.getUserMedia({audio: true, video: false}).then(gotMedia).catch(errMedia);
+            showmic.innerHTML = "Stop Mic";
+        }
     });
 
     load.addEventListener('click', event =>
@@ -68,11 +124,14 @@ window.addEventListener("load", function()
         window.streamDeck.drawImage(5, "./images/normal/Source-On.png", "black");
         window.streamDeck.drawImage(6, "./images/normal/Record-On.png", "black");
         window.streamDeck.drawImage(7, "./images/normal/Scene-1-On.png", "black");
+        window.streamDeck.writeText(8, "Webcam", "white", "black");
+        window.streamDeck.writeText(9, "Mic", "white", "black");
         window.streamDeck.drawImage(14, "./images/normal/Screenshot.png", "black");
     });
 
     setupEventHandler();
 });
+
 
 function getStreamDeck()
 {
@@ -100,7 +159,6 @@ function setupEventHandler()
 
         if (event.data.event == "images")
         {
-            console.debug("screen refresh", event.data);
             window.streamDeck.handleScreen(event);
         }
     });

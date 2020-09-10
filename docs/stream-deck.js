@@ -103,28 +103,119 @@ export default class StreamDeck
         img.src = url;
     }
 
-    showMediaStream(id, track, fill)
+    showAudioStream(id, stream, label)
     {
-        console.debug("showMediaStream", id, track, fill);
+        console.debug("showAudioStream", id, stream);
 
-        function errFrame(err)
+        const canvasCtx = this.canvas.getContext('2d');
+        this._roundRect(canvasCtx, 2, 2, 68, 68, 20);
+
+        const audioCtx = new AudioContext();
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.minDecibels = -80;
+        analyser.maxDecibels = -10;
+        analyser.smoothingTimeConstant = 0.85;
+        audioCtx.createMediaStreamSource(stream).connect(analyser);
+
+        var bufferLength = analyser.frequencyBinCount;
+        var dataArray = new Float32Array(bufferLength);
+        var MIN = 7;
+        var WIDTH = this.canvas.width * window.devicePixelRatio;
+        var HEIGHT = this.canvas.height * window.devicePixelRatio;
+
+        const uuidToColor = (id) =>
+        {
+            var g = 0, b = 0;
+
+            for (var i = 0; i < id.length/2; i++)
+            {
+              var code = id.charCodeAt(i);
+              g = g + code;
+              code = id.charCodeAt(i*2);
+              b = b + code;
+            }
+            return [g % 256, b % 256];
+        }
+
+        const draw = () =>
+        {
+            analyser.getFloatFrequencyData(dataArray);
+
+            var barWidth = (WIDTH / bufferLength) * 3;
+            var barHeight, point, x = 0;
+
+            for (var i = 0; i < bufferLength; i++)
+            {
+                point = dataArray[i];
+                barHeight = (point + 140) * 2.5;
+                barHeight = HEIGHT / MIN + barHeight / 256 * HEIGHT * (MIN - 1) / MIN;
+
+                if (barHeight < HEIGHT / MIN) {
+                  barHeight = HEIGHT / MIN;
+                }
+
+                canvasCtx.fillStyle = 'rgb(0, 0, 0)';
+                canvasCtx.fillRect(x, 0, barWidth, HEIGHT);
+
+                var r = Math.floor(barHeight + 64);
+
+                if (g % 3 === 0) {
+                  canvasCtx.fillStyle = `rgb(${r},${g},${b})`;
+                } else if (g % 3 === 1) {
+                  canvasCtx.fillStyle = `rgb(${g},${r},${b})`;
+                } else {
+                  canvasCtx.fillStyle = `rgb(${g},${b},${r})`;
+                }
+
+                canvasCtx.fillRect(x, HEIGHT-barHeight + 15, barWidth, barHeight);
+
+                canvasCtx.fillStyle = "white";
+                canvasCtx.fillText(label, 36, 18);
+
+                const imgData = canvasCtx.getImageData(0, 0, 72, 72);
+                const pic = imgData.data;
+                this._transferImage(id, pic, imgData);
+
+                x += barWidth + 2;
+            }
+        }
+
+        var gb = uuidToColor(label);
+        var g = gb[0], b = gb[1];
+
+        canvasCtx.fillStyle = 'rgb(0, 0, 0)';
+        canvasCtx.fillRect(0, 0, WIDTH, HEIGHT);
+        canvasCtx.font = "12px Arial";
+
+        audioCtx.resume();
+        return setInterval(draw, 1000);
+    }
+
+    showMediaStream(id, track, label)
+    {
+        console.debug("showMediaStream", id, track, label);
+
+        const errFrame = (err) =>
         {
             console.error('grabFrame() failed: ', err)
         }
 
-        function processFrame(img)
+        const processFrame = (img) =>
         {
-            context.drawImage(img, 0, 0, img.width, img.height, 0, 0, 72, 72);
-            const imgData = context.getImageData(0, 0, 72, 72);
+            ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, 72, 72);
+            ctx.fillText(label, 48, 18);
+            const imgData = ctx.getImageData(0, 0, 72, 72);
             const pic = imgData.data;
-            that._transferImage(id, pic, imgData);
+            this._transferImage(id, pic, imgData);
         }
 
-        const that = this;
+        const ctx = this.canvas.getContext('2d');
+        this._roundRect(ctx, 2, 2, 68, 68, 20);
+        ctx.font = "12px Arial";
+        ctx.fillStyle = "white";
+
         const imageCapture = new ImageCapture(track);
-        const context = this.canvas.getContext('2d');
-        context.fillStyle = fill;
-        context.roundRect(0, 0, 72, 72, 20).fill();
 
         return setInterval(function () {
             imageCapture.grabFrame().then(processFrame).catch(errFrame);
@@ -150,8 +241,8 @@ export default class StreamDeck
            context.fillText(texts[1], 3, 48);
 
         } else {
-           context.font = "24px Arial";
-           context.fillText(text, 3, 48);
+           context.font = "20px Arial";
+           context.fillText(text, 3, 40);
         }
 
         const img = context.getImageData(0, 0, 72, 72);
@@ -222,11 +313,24 @@ export default class StreamDeck
                 const x = -40 + (col * 106);
                 const y = 100 + (row * 103);
                 that.ui.context.drawImage(imgBitmap, 0, 0, 72, 72, x, y, 80, 80);
-
-                console.debug("handleScreen", imgBitmap);
-
             });
         }
+    }
+
+    _roundRect(ctx, x, y, width, height, radius)
+    {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+        ctx.clip();
     }
 
     _handleDevice(event)
@@ -242,7 +346,7 @@ export default class StreamDeck
 
     _transferImage(id, pic, imgData)
     {
-        console.debug("_transferImage", id, pic);
+        //console.debug("_transferImage", id, pic);
         const height = 72;
         const width = 72;
         const img = new Uint8Array(height * width * 3);
@@ -264,7 +368,7 @@ export default class StreamDeck
 
     async _setKeyBitmap(id, img, imgData)
     {
-        console.debug("_setKeyBitmap", id, imgData);
+        //console.debug("_setKeyBitmap", id, imgData);
 
         if (this.eventChannel)
         {
