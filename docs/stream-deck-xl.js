@@ -33,7 +33,7 @@ export default class StreamDeckXL
         try {
             let devices = await navigator.hid.getDevices();
             this.device = await devices.find(d => d.vendorId === 0x0FD9 && d.productId === 0x006c);
-            if (!this.device) this.device = await navigator.hid.requestDevice({filters: [{vendorId: 0x0FD9, productId: 0x006c}]});
+            if (!this.device) this.device = (await navigator.hid.requestDevice({filters: [{vendorId: 0x0FD9, productId: 0x006c}]}))[0];
             if (!this.device.opened) await this.device.open();
             this.device.addEventListener('inputreport', this._handleDevice.bind(this));
             if (callback) callback();
