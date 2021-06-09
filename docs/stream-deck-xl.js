@@ -83,7 +83,7 @@ export default class StreamDeckXL
     {
         const context = this.canvas[id].getContext('2d');
         context.fillStyle = fill;
-        context.roundRect(2, 2, 92, 92, 20).fill();
+        context.roundRect(2, 2, 95, 92, 20).fill();
         await this._transferImage(id);
     }
 
@@ -91,7 +91,7 @@ export default class StreamDeckXL
     {
         const context = this.canvas[id].getContext('2d');
         context.fillStyle = background;
-        context.roundRect(2, 2, 92, 92, 20).fill();
+        context.roundRect(2, 2, 95, 92, 20).fill();
         context.fillStyle = color;
 
         if (text.indexOf(" ") > -1)
@@ -188,7 +188,7 @@ export default class StreamDeckXL
         console.debug("drawImage", id, url, background);
         const context = this.canvas[id].getContext('2d');
         context.fillStyle = background;
-        context.roundRect(2, 2, 92, 92, 20).fill();
+        context.roundRect(2, 2, 95, 92, 20).fill();
         const img = new Image;
         const that = this;
 
@@ -205,7 +205,7 @@ export default class StreamDeckXL
         console.debug("showAudioStream", id, stream);
 
         const ctx = this.canvas[id].getContext('2d');
-        this._roundRect(ctx, 2, 2, 92, 92, 20);
+        this._roundRect(ctx, 2, 2, 95, 92, 20);
 
         const audioCtx = new AudioContext();
         const analyser = audioCtx.createAnalyser();
@@ -235,7 +235,7 @@ export default class StreamDeckXL
         }
 
         const ctx = this.canvas[id].getContext('2d');
-        this._roundRect(ctx, 2, 2, 92, 92, 20);
+        this._roundRect(ctx, 2, 2, 95, 92, 20);
         ctx.font = "16px Arial";
         ctx.fillStyle = "white";
 
@@ -251,7 +251,7 @@ export default class StreamDeckXL
         console.debug("showAudioStream", id, stream);
 
         const canvasCtx = this.canvas[id].getContext('2d');
-        this._roundRect(canvasCtx, 2, 2, 92, 92, 20);
+        this._roundRect(canvasCtx, 2, 2, 95, 92, 20);
 
         const audioCtx = new AudioContext();
         const analyser = audioCtx.createAnalyser();
